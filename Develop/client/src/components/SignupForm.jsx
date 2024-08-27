@@ -20,9 +20,14 @@ const SignupForm = () => {
         variables: { ...formState },
       });
 
-      Auth.login(data.addUser.token);
+      if (data && data.addUser && data.addUser.token) {
+        Auth.login(data.addUser.token);
+      } else {
+        console.error('No token returned from addUser mutation.');
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Signup Error:', e);
+      console.error('Error details:', JSON.stringify(e, null, 2));
     }
   };
 
@@ -67,5 +72,6 @@ const SignupForm = () => {
 };
 
 export default SignupForm;
+
 
 

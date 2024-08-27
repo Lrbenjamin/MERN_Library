@@ -1,6 +1,7 @@
 const { AuthenticationError } = require('apollo-server-express');
 const { User } = require('../models');
 const { signToken } = require('../utils/auth');
+const mongoose = require('mongoose');
 
 const resolvers = {
   Query: {
@@ -30,10 +31,33 @@ const resolvers = {
       return { token, user };
     },
     addUser: async (parent, args) => {
-      const user = await User.create(args);
-      const token = signToken(user);
+      try {
+        console.log('Received args:', args); // Log the input arguments
 
-      return { token, user };
+        // Attempt to create the user
+        const user = await User.create(args);
+        console.log('User created:', user); // Log the created user
+
+        // Generate a token for the new user
+        const token = signToken(user);
+        console.log('Token generated:', token); // Log the generated token
+
+        // Return the token and user object
+        return { token, user };
+      } catch (error) {
+        // Handle duplicate key error
+        if (error instanceof mongoose.Error.ValidationError || error.code === 11000) {
+          console.error('Duplicate key error:', error.message);
+          throw new Error('Email already exists. Please use a different email.');
+        }
+
+        // Log other errors with full stack trace
+        console.error('Error during user creation:', error.message);
+        console.error('Stack trace:', error.stack);
+
+        // Re-throw the error to be caught by Apollo Client
+        throw new Error('Failed to add user');
+      }
     },
     saveBook: async (parent, { bookData }, context) => {
       if (context.user) {
@@ -63,3 +87,8 @@ const resolvers = {
 };
 
 module.exports = resolvers;
+
+
+
+
+
