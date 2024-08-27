@@ -9,7 +9,11 @@ const SavedBooks = () => {
   const { loading, data } = useQuery(GET_ME);
   const [removeBook] = useMutation(REMOVE_BOOK);
 
+  // Handle case where data might be undefined
   const userData = data?.me || {};
+
+  // Use optional chaining and provide a fallback to avoid accessing undefined properties
+  const savedBooks = userData.savedBooks || [];
 
   const handleDeleteBook = async (bookId) => {
     if (!Auth.loggedIn()) {
@@ -40,14 +44,12 @@ const SavedBooks = () => {
       </div>
       <div>
         <h2 className="pt-5">
-          {userData.savedBooks.length
-            ? `Viewing ${userData.savedBooks.length} saved ${
-                userData.savedBooks.length === 1 ? 'book' : 'books'
-              }:`
+          {savedBooks.length
+            ? `Viewing ${savedBooks.length} saved ${savedBooks.length === 1 ? 'book' : 'books'}:`
             : 'You have no saved books!'}
         </h2>
         <div>
-          {userData.savedBooks.map((book) => (
+          {savedBooks.map((book) => (
             <div key={book.bookId} md="4">
               <div border="dark">
                 {book.image ? (

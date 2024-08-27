@@ -1,23 +1,22 @@
+const { AuthenticationError } = require('apollo-server-express');
 const { User } = require('../models');
 const { signToken } = require('../utils/auth');
-const { AuthenticationError } = require('apollo-server-express');
 
 const resolvers = {
   Query: {
     me: async (parent, args, context) => {
       if (context.user) {
-        return User.findById(context.user._id).populate('savedBooks');
+        return User.findOne({ _id: context.user._id }).populate('savedBooks');
       }
-      throw new AuthenticationError('Not logged in');
+      throw new AuthenticationError('You need to be logged in!');
     },
   },
-
   Mutation: {
     login: async (parent, { email, password }) => {
       const user = await User.findOne({ email });
 
       if (!user) {
-        throw new AuthenticationError('Incorrect credentials');
+        throw new AuthenticationError('No user found with this email address');
       }
 
       const correctPw = await user.isCorrectPassword(password);
@@ -27,36 +26,38 @@ const resolvers = {
       }
 
       const token = signToken(user);
+
       return { token, user };
     },
-
     addUser: async (parent, args) => {
       const user = await User.create(args);
       const token = signToken(user);
 
       return { token, user };
     },
-
     saveBook: async (parent, { bookData }, context) => {
       if (context.user) {
-        return User.findByIdAndUpdate(
+        const updatedUser = await User.findByIdAndUpdate(
           context.user._id,
           { $addToSet: { savedBooks: bookData } },
-          { new: true, runValidators: true }
-        );
-      }
-      throw new AuthenticationError('Not logged in');
-    },
+          { new: true }
+        ).populate('savedBooks');
 
+        return updatedUser;
+      }
+      throw new AuthenticationError('You need to be logged in!');
+    },
     removeBook: async (parent, { bookId }, context) => {
       if (context.user) {
-        return User.findByIdAndUpdate(
+        const updatedUser = await User.findByIdAndUpdate(
           context.user._id,
           { $pull: { savedBooks: { bookId } } },
           { new: true }
-        );
+        ).populate('savedBooks');
+
+        return updatedUser;
       }
-      throw new AuthenticationError('Not logged in');
+      throw new AuthenticationError('You need to be logged in!');
     },
   },
 };

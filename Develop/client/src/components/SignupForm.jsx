@@ -1,151 +1,71 @@
-import React, { useState, useCallback } from 'react';
-import { Container, Col, Form, Button, Card, Row } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Form, Button } from 'react-bootstrap';
 import { useMutation } from '@apollo/client';
-import { SAVE_BOOK } from '../utils/mutations';
+import { ADD_USER } from '../utils/mutations';
 import Auth from '../utils/auth';
-import { searchGoogleBooks } from '../utils/API';
-import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
-import { debounce } from 'lodash';
 
-const SearchBooks = () => {
-  const [searchedBooks, setSearchedBooks] = useState([]);
-  const [searchInput, setSearchInput] = useState('');
-  const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
+const SignupForm = () => {
+  const [formState, setFormState] = useState({ username: '', email: '', password: '' });
+  const [addUser] = useMutation(ADD_USER);
 
-  const [saveBook, { error }] = useMutation(SAVE_BOOK);
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormState({ ...formState, [name]: value });
+  };
 
-  // Debounced handleFormSubmit function
-  const handleFormSubmit = useCallback(
-    debounce(async (event) => {
-      event.preventDefault();
-
-      if (!searchInput) {
-        return false;
-      }
-
-      try {
-        const response = await searchGoogleBooks(searchInput);
-
-        if (!response.ok) {
-          if (response.status === 429) {
-            throw new Error('Too many requests. Please try again later.');
-          }
-          throw new Error('Something went wrong!');
-        }
-
-        const { items } = await response.json();
-
-        const bookData = items.map((book) => ({
-          bookId: book.id,
-          authors: book.volumeInfo.authors || ['No author to display'],
-          title: book.volumeInfo.title,
-          description: book.volumeInfo.description,
-          image: book.volumeInfo.imageLinks?.thumbnail || '',
-          link: book.volumeInfo.infoLink,
-        }));
-
-        setSearchedBooks(bookData);
-        setSearchInput('');
-      } catch (err) {
-        console.error(err.message);
-        alert(err.message);
-      }
-    }, 1000),
-    [searchInput]
-  );
-
-  const handleSaveBook = async (bookId) => {
-    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
-
-    if (!Auth.loggedIn()) {
-      return false;
-    }
-
+  const handleFormSubmit = async (event) => {
+    event.preventDefault();
     try {
-      const { data } = await saveBook({
-        variables: { bookData: { ...bookToSave } },
+      const { data } = await addUser({
+        variables: { ...formState },
       });
 
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
-      saveBookIds([...savedBookIds, bookToSave.bookId]);
-    } catch (err) {
-      console.error(err);
+      Auth.login(data.addUser.token);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   return (
-    <>
-      <div fluid className="text-light bg-dark p-5">
-        <Container>
-          <h1>Search for Books!</h1>
-          <Form onSubmit={handleFormSubmit}>
-            <Form.Row>
-              <Col xs={12} md={8}>
-                <Form.Control
-                  name="searchInput"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  type="text"
-                  size="lg"
-                  placeholder="Search for a book"
-                />
-              </Col>
-              <Col xs={12} md={4}>
-                <Button type="submit" variant="success" size="lg">
-                  Submit Search
-                </Button>
-              </Col>
-            </Form.Row>
-          </Form>
-        </Container>
-      </div>
-
-      <Container>
-        <h2 className='pt-5'>
-          {searchedBooks.length
-            ? `Viewing ${searchedBooks.length} results:`
-            : 'Search for a book to begin'}
-        </h2>
-        <Row>
-          {searchedBooks.map((book) => {
-            return (
-              <Col md="4" key={book.bookId}>
-                <Card border="dark">
-                  {book.image ? (
-                    <Card.Img
-                      src={book.image}
-                      alt={`The cover for ${book.title}`}
-                      variant="top"
-                    />
-                  ) : null}
-                  <Card.Body>
-                    <Card.Title>{book.title}</Card.Title>
-                    <p className="small">Authors: {book.authors.join(', ')}</p>
-                    <Card.Text>{book.description}</Card.Text>
-                    {Auth.loggedIn() && (
-                      <Button
-                        disabled={savedBookIds?.some(
-                          (savedId) => savedId === book.bookId
-                        )}
-                        className="btn-block btn-info"
-                        onClick={() => handleSaveBook(book.bookId)}
-                      >
-                        {savedBookIds?.some((savedId) => savedId === book.bookId)
-                          ? 'This book has already been saved!'
-                          : 'Save this Book!'}
-                      </Button>
-                    )}
-                  </Card.Body>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
-      </Container>
-    </>
+    <Form onSubmit={handleFormSubmit}>
+      <Form.Group>
+        <Form.Label htmlFor="username">Username</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Your username"
+          name="username"
+          value={formState.username}
+          onChange={handleInputChange}
+          required
+        />
+      </Form.Group>
+      <Form.Group>
+        <Form.Label htmlFor="email">Email</Form.Label>
+        <Form.Control
+          type="email"
+          placeholder="Your email"
+          name="email"
+          value={formState.email}
+          onChange={handleInputChange}
+          required
+        />
+      </Form.Group>
+      <Form.Group>
+        <Form.Label htmlFor="password">Password</Form.Label>
+        <Form.Control
+          type="password"
+          placeholder="Your password"
+          name="password"
+          value={formState.password}
+          onChange={handleInputChange}
+          required
+        />
+      </Form.Group>
+      <Button type="submit">Submit</Button>
+    </Form>
   );
 };
 
-export default SearchBooks;
+export default SignupForm;
 
 

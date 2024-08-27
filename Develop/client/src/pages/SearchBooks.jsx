@@ -54,26 +54,7 @@ const SearchBooks = () => {
       console.error(err.message);
       alert(err.message);
     }
-  };
-
-  const handleSaveBook = async (bookId) => {
-    const bookToSave = searchedBooks.find((book) => book.bookId === bookId);
-
-    if (!Auth.loggedIn()) {
-      return false;
-    }
-
-    try {
-      await saveBook({
-        variables: { bookData: { ...bookToSave } },
-      });
-
-      setSavedBookIds([...savedBookIds, bookToSave.bookId]);
-      saveBookIds([...savedBookIds, bookToSave.bookId]);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  };  
 
   return (
     <>
